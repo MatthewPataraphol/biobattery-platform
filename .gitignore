@@ -1,0 +1,31 @@
+# Secrets and credentials
+*.env
+*.secret
+*.key
+*.pem
+credentials/
+secrets/
+
+# Local runtime data
+data/
+output/
+logs/
+jetstream/
+*.jsonl
+*.csv
+*.tsv
+
+# GNU Radio generated caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+*~
+
+# Local backup files
+*.bak
+*.backup
