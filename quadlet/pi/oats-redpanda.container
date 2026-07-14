@@ -1,0 +1,23 @@
+[Unit]
+Description=OATS Redpanda Connect Peak Transformer
+Requires=oats-nats.service
+After=oats-nats.service network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=oats-redpanda
+Image=docker.io/redpandadata/connect:latest
+Network=oats.network
+
+Volume=/etc/oats/transformer/connect.yaml:/connect.yaml:ro
+Volume=/var/lib/oats/transformer/output:/data/output
+
+Exec=run
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
