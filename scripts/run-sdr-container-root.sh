@@ -8,7 +8,7 @@ if [[ ! "${DISPLAY_VALUE}" =~ ^:[0-9]+(\.[0-9]+)?$ ]]; then
     exit 1
 fi
 
-IMAGE="localhost/biobattery-sdr:dev"
+IMAGE="ghcr.io/matthewpataraphol/biobattery-sdr:main"
 CONTAINER="oats-sdr"
 
 # Remove an earlier container if it exists.
