@@ -1,0 +1,3 @@
+setuptools<82
+nats-py
+pynats2

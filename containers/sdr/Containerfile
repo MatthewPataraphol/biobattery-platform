@@ -1,0 +1,44 @@
+FROM docker.io/library/debian:trixie-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV UHD_IMAGES_DIR=/usr/share/uhd/4.8.0/images
+ENV NATS_URL=nats://oats-nats:4222
+ENV OATS_DATA_DIR=/data
+ENV QT_X11_NO_MITSHM=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gnuradio \
+        uhd-host \
+        python3-uhd \
+        python3-numpy \
+        python3-pip \
+        python3-venv \
+        python3-pyqt5 \
+        libusb-1.0-0 \
+        libgl1 \
+        libxkbcommon-x11-0 \
+        xauth \
+        ca-certificates \
+    && python3 -m venv --system-site-packages /opt/oats-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/opt/oats-venv/bin:${PATH}"
+
+WORKDIR /opt/oats
+
+COPY requirements.txt /opt/oats/requirements.txt
+
+RUN /opt/oats-venv/bin/pip install \
+        --no-cache-dir \
+        -r /opt/oats/requirements.txt
+
+COPY SDR_Implementation.py /opt/oats/
+COPY SDR_Implementation_epy_block_0.py /opt/oats/
+COPY SDR_Implementation_epy_block_1.py /opt/oats/
+COPY start-sdr.sh /usr/local/bin/start-sdr
+
+RUN chmod 0755 /usr/local/bin/start-sdr \
+    && mkdir -p /data
+
+CMD ["/usr/local/bin/start-sdr"]

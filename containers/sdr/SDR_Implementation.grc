@@ -1,0 +1,883 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: SDR_Implementation
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Not titled yet
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [16, 12.0]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: center_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: 209e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [312, 12.0]
+    rotation: 0
+    state: enabled
+- name: fft_size
+  id: variable
+  parameters:
+    comment: ''
+    value: '2048'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [424, 12.0]
+    rotation: 0
+    state: enabled
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 10e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [200, 12.0]
+    rotation: 0
+    state: enabled
+- name: blocks_complex_to_mag_squared_0
+  id: blocks_complex_to_mag_squared
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: fft_size
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1008, 208.0]
+    rotation: 0
+    state: enabled
+- name: blocks_stream_to_vector_0
+  id: blocks_stream_to_vector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_items: fft_size
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [504, 208.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_0
+  id: epy_block
+  parameters:
+    _source_code: "\"\"\"\nOATS B200mini Peak Detector + JSONL Logger + NATS Publisher\n\
+      \nInput:\n    float32 vector of FFT power values from:\n    UHD Source -> Stream\
+      \ to Vector -> FFT -> Complex to Mag^2\n\nOutput:\n    None\n\nThis block:\n\
+      \    - averages the power spectrum\n    - searches for strongest peak from min_freq\
+      \ to max_freq\n    - estimates noise floor and SNR\n    - prints results to\
+      \ terminal\n    - saves one JSON object per line to a .jsonl file\n    - publishes\
+      \ the same JSON object to NATS\n\"\"\"\n\nimport os\nimport json\nimport time\n\
+      import numpy as np\nfrom gnuradio import gr\n\ntry:\n    from pynats2 import\
+      \ NATSClient\nexcept Exception:\n    NATSClient = None\n\n\nclass blk(gr.sync_block):\n\
+      \    def __init__(\n        self,\n        center_freq=209e6,\n        samp_rate=10e6,\n\
+      \        fft_size=2048,\n        min_freq=205e6,\n        max_freq=213e6,\n\
+      \        avg_alpha=0.1,\n        log_interval=0.5,\n        snr_threshold_db=6.0,\n\
+      \        log_dir=\"/home/iot4ag/sdr/GNUradio_files/data\",\n        source_name=\"\
+      b200mini\",\n        publish_nats=True,\n        nats_server=\"nats://localhost:4222\"\
+      ,\n        nats_subject=\"sdr.peaks\",\n    ):\n        gr.sync_block.__init__(\n\
+      \            self,\n            name=\"OATS Peak Detector NATS\",\n        \
+      \    in_sig=[(np.float32, int(fft_size))],\n            out_sig=None,\n    \
+      \    )\n\n        self.center_freq = float(center_freq)\n        self.samp_rate\
+      \ = float(samp_rate)\n        self.fft_size = int(fft_size)\n        self.min_freq\
+      \ = float(min_freq)\n        self.max_freq = float(max_freq)\n        self.avg_alpha\
+      \ = float(avg_alpha)\n        self.log_interval = float(log_interval)\n    \
+      \    self.snr_threshold_db = float(snr_threshold_db)\n        self.log_dir =\
+      \ str(log_dir)\n        self.source_name = str(source_name)\n\n        self.publish_nats\
+      \ = bool(publish_nats)\n        self.nats_server = str(nats_server)\n      \
+      \  self.nats_subject = str(nats_subject)\n        self.nc = None\n        self.nats_connected\
+      \ = False\n\n        self.avg_power = None\n        self.last_log_time = 0.0\n\
+      \n        os.makedirs(self.log_dir, exist_ok=True)\n\n        date_str = time.strftime(\"\
+      %Y%m%d\")\n        self.log_path = os.path.join(\n            self.log_dir,\n\
+      \            f\"b200mini_peak_log_{date_str}.jsonl\"\n        )\n\n        #\
+      \ This assumes FFT block has Shift: Yes\n        self.freqs = np.linspace(\n\
+      \            self.center_freq - self.samp_rate / 2.0,\n            self.center_freq\
+      \ + self.samp_rate / 2.0,\n            self.fft_size,\n            endpoint=False,\n\
+      \        )\n\n        self.search_mask = (\n            (self.freqs >= self.min_freq)\n\
+      \            & (self.freqs <= self.max_freq)\n        )\n\n        if not np.any(self.search_mask):\n\
+      \            raise ValueError(\"Search range does not overlap FFT frequency\
+      \ range.\")\n\n        print(f\"[OATS] JSONL logging to: {self.log_path}\",\
+      \ flush=True)\n        print(\n            f\"[OATS] Search range: {self.min_freq/1e6:.3f}\
+      \ MHz to {self.max_freq/1e6:.3f} MHz\",\n            flush=True,\n        )\n\
+      \n        if self.publish_nats:\n            self._connect_nats()\n\n    def\
+      \ _connect_nats(self):\n        if NATSClient is None:\n            print(\"\
+      [OATS] pynats2 is not installed. NATS publishing disabled.\", flush=True)\n\
+      \            self.nats_connected = False\n            return\n\n        try:\n\
+      \            self.nc = NATSClient(self.nats_server, socket_timeout=2)\n    \
+      \        self.nc.connect()\n            self.nats_connected = True\n       \
+      \     print(\n                f\"[OATS] Connected to NATS: {self.nats_server},\
+      \ subject: {self.nats_subject}\",\n                flush=True,\n           \
+      \ )\n        except Exception as e:\n            self.nats_connected = False\n\
+      \            print(f\"[OATS] Could not connect to NATS: {e}\", flush=True)\n\
+      \n    def _publish_nats(self, json_dump):\n        if not self.publish_nats:\n\
+      \            return\n\n        if not self.nats_connected:\n            self._connect_nats()\n\
+      \n        if not self.nats_connected:\n            return\n\n        try:\n\
+      \            self.nc.publish(subject=self.nats_subject, payload=json_dump)\n\
+      \        except Exception as e:\n            self.nats_connected = False\n \
+      \           print(f\"[OATS] NATS publish failed: {e}\", flush=True)\n\n    def\
+      \ work(self, input_items, output_items):\n        spectra = input_items[0]\n\
+      \n        for power in spectra:\n            # Prevent log10(0)\n          \
+      \  power = np.maximum(power, 1e-20)\n\n            # Exponential moving average\
+      \ of power spectrum\n            if self.avg_power is None:\n              \
+      \  self.avg_power = power.copy()\n            else:\n                self.avg_power\
+      \ = (\n                    self.avg_alpha * power\n                    + (1.0\
+      \ - self.avg_alpha) * self.avg_power\n                )\n\n            now =\
+      \ time.time()\n\n            # Only print/log/publish every log_interval seconds\n\
+      \            if now - self.last_log_time < self.log_interval:\n            \
+      \    continue\n\n            self.last_log_time = now\n\n            search_power\
+      \ = self.avg_power[self.search_mask]\n            search_freqs = self.freqs[self.search_mask]\n\
+      \n            peak_idx = int(np.argmax(search_power))\n            peak_freq_hz\
+      \ = float(search_freqs[peak_idx])\n\n            search_power_db = 10.0 * np.log10(np.maximum(search_power,\
+      \ 1e-20))\n            peak_power_db = float(search_power_db[peak_idx])\n  \
+      \          noise_floor_db = float(np.median(search_power_db))\n            snr_db\
+      \ = float(peak_power_db - noise_floor_db)\n\n            detected = bool(snr_db\
+      \ >= self.snr_threshold_db)\n\n            record = {\n                \"source\"\
+      : self.source_name,\n                \"timestamp_unix\": now,\n            \
+      \    \"timestamp_local\": time.strftime(\"%Y-%m-%d %H:%M:%S\"),\n          \
+      \      \"center_freq_hz\": self.center_freq,\n                \"sample_rate_hz\"\
+      : self.samp_rate,\n                \"fft_size\": self.fft_size,\n          \
+      \      \"min_freq_hz\": self.min_freq,\n                \"max_freq_hz\": self.max_freq,\n\
+      \                \"avg_alpha\": self.avg_alpha,\n                \"peak_freq_hz\"\
+      : peak_freq_hz,\n                \"peak_freq_mhz\": peak_freq_hz / 1e6,\n  \
+      \              \"peak_power_db_relative\": peak_power_db,\n                \"\
+      noise_floor_db_relative\": noise_floor_db,\n                \"snr_db\": snr_db,\n\
+      \                \"snr_threshold_db\": self.snr_threshold_db,\n            \
+      \    \"detected\": detected,\n            }\n\n            json_dump = json.dumps(record)\n\
+      \n            print(\n                \"Peak: {:.6f} MHz | Power: {:.1f} dB\
+      \ rel | Noise: {:.1f} dB rel | SNR: {:.1f} dB | Detected: {}\".format(\n   \
+      \                 record[\"peak_freq_mhz\"],\n                    peak_power_db,\n\
+      \                    noise_floor_db,\n                    snr_db,\n        \
+      \            detected,\n                ),\n                flush=True,\n  \
+      \          )\n\n            # Local backup log\n            with open(self.log_path,\
+      \ \"a\") as f:\n                f.write(json_dump + \"\\n\")\n\n           \
+      \ # NATS publish\n            self._publish_nats(json_dump)\n            \n\
+      \        return len(input_items[0])\n        \n    def stop(self):\n       \
+      \ print(\"[OATS] Stopping block and closing NATS connection...\", flush=True)\n\
+      \n        try:\n            if self.nc is not None:\n                self.nc.close()\n\
+      \        except Exception as e:\n            print(f\"[OATS] Error closing NATS:\
+      \ {e}\", flush=True)\n\n        self.nats_connected = False\n        return\
+      \ True\n"
+    affinity: ''
+    alias: ''
+    avg_alpha: '0.1'
+    center_freq: center_freq
+    comment: ''
+    fft_size: fft_size
+    log_dir: '"/home/iot4ag/sdr/GNUradio_files/data"'
+    log_interval: '0.5'
+    max_freq: 213e6
+    maxoutbuf: '0'
+    min_freq: 205e6
+    minoutbuf: '0'
+    nats_server: '"nats://localhost:4222"'
+    nats_subject: '"sdr.peaks"'
+    publish_nats: 'True'
+    samp_rate: samp_rate
+    snr_threshold_db: '15'
+    source_name: '''b200mini'''
+  states:
+    _io_cache: ('OATS Peak Detector NATS', 'blk', [('center_freq', '209000000.0'),
+      ('samp_rate', '10000000.0'), ('fft_size', '2048'), ('min_freq', '205000000.0'),
+      ('max_freq', '213000000.0'), ('avg_alpha', '0.1'), ('log_interval', '0.5'),
+      ('snr_threshold_db', '6.0'), ('log_dir', "'/home/iot4ag/sdr/GNUradio_files/data'"),
+      ('source_name', "'b200mini'"), ('publish_nats', 'True'), ('nats_server', "'nats://localhost:4222'"),
+      ('nats_subject', "'sdr.peaks'")], [('0', 'float', 2048)], [], '', ['avg_alpha',
+      'center_freq', 'fft_size', 'log_dir', 'log_interval', 'max_freq', 'min_freq',
+      'nats_server', 'nats_subject', 'publish_nats', 'samp_rate', 'snr_threshold_db',
+      'source_name'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1288, 148.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_1
+  id: epy_block
+  parameters:
+    _source_code: "\"\"\"\nFull FFT NATS Publisher for OATS/B200mini debug streaming.\n\
+      \nInput:\n    float32 vector of FFT power values after:\n    FFT -> Complex\
+      \ to Mag^2\n\nOutput:\n    None\n\nThis block:\n    - averages the full FFT\
+      \ power spectrum internally\n    - publishes the averaged full FFT vector to\
+      \ NATS at a controlled interval\n    - uses base64-encoded float32 data\n\"\"\
+      \"\n\nimport json\nimport time\nimport base64\nimport numpy as np\nfrom gnuradio\
+      \ import gr\n\ntry:\n    from pynats2 import NATSClient\nexcept Exception:\n\
+      \    NATSClient = None\n\n\nclass blk(gr.sync_block):\n    def __init__(\n \
+      \       self,\n        center_freq=209e6,\n        samp_rate=10e6,\n       \
+      \ fft_size=2048,\n        nats_server=\"nats://localhost:4222\",\n        nats_subject=\"\
+      sdr.fft\",\n        publish_nats=True,\n        source_name=\"b200mini\",\n\
+      \        avg_alpha=0.1,\n        publish_interval=1.0,\n    ):\n        gr.sync_block.__init__(\n\
+      \            self,\n            name=\"Full FFT NATS Publisher\",\n        \
+      \    in_sig=[(np.float32, int(fft_size))],\n            out_sig=None,\n    \
+      \    )\n\n        self.center_freq = float(center_freq)\n        self.samp_rate\
+      \ = float(samp_rate)\n        self.fft_size = int(fft_size)\n        self.nats_server\
+      \ = str(nats_server)\n        self.nats_subject = str(nats_subject)\n      \
+      \  self.publish_nats = bool(publish_nats)\n        self.source_name = str(source_name)\n\
+      \        self.avg_alpha = float(avg_alpha)\n        self.publish_interval =\
+      \ float(publish_interval)\n\n        self.avg_power = None\n        self.last_publish_time\
+      \ = 0.0\n\n        self.nc = None\n        self.nats_connected = False\n\n \
+      \       if self.publish_nats:\n            self._connect_nats()\n\n    def _connect_nats(self):\n\
+      \        if NATSClient is None:\n            print(\"[FFT] pynats2 not installed.\
+      \ NATS disabled.\", flush=True)\n            return\n\n        try:\n      \
+      \      self.nc = NATSClient(self.nats_server, socket_timeout=2)\n          \
+      \  self.nc.connect()\n            self.nats_connected = True\n            print(\n\
+      \                f\"[FFT] Connected to NATS: {self.nats_server}, subject: {self.nats_subject}\"\
+      ,\n                flush=True,\n            )\n        except Exception as e:\n\
+      \            self.nats_connected = False\n            print(f\"[FFT] Could not\
+      \ connect to NATS: {e}\", flush=True)\n\n    def _publish(self, payload):\n\
+      \        if not self.publish_nats:\n            return\n\n        if not self.nats_connected:\n\
+      \            self._connect_nats()\n\n        if not self.nats_connected:\n \
+      \           return\n\n        try:\n            self.nc.publish(subject=self.nats_subject,\
+      \ payload=payload)\n        except Exception as e:\n            self.nats_connected\
+      \ = False\n            print(f\"[FFT] NATS publish failed: {e}\", flush=True)\n\
+      \n    def work(self, input_items, output_items):\n        spectra = input_items[0]\n\
+      \n        for spectrum in spectra:\n            spectrum = np.maximum(spectrum,\
+      \ 1e-20).astype(np.float32)\n\n            # Internal exponential moving average\n\
+      \            if self.avg_power is None:\n                self.avg_power = spectrum.copy()\n\
+      \            else:\n                self.avg_power = (\n                   \
+      \ self.avg_alpha * spectrum\n                    + (1.0 - self.avg_alpha) *\
+      \ self.avg_power\n                ).astype(np.float32)\n\n            now =\
+      \ time.time()\n\n            # Publish only every publish_interval seconds\n\
+      \            if now - self.last_publish_time < self.publish_interval:\n    \
+      \            continue\n\n            self.last_publish_time = now\n\n      \
+      \      # Base64 encode averaged float32 power vector\n            fft_b64 =\
+      \ base64.b64encode(self.avg_power.tobytes()).decode(\"utf-8\")\n\n         \
+      \   record = {\n                \"source\": self.source_name,\n            \
+      \    \"timestamp_unix\": now,\n                \"timestamp_local\": time.strftime(\"\
+      %Y-%m-%d %H:%M:%S\"),\n                \"center_freq_hz\": self.center_freq,\n\
+      \                \"sample_rate_hz\": self.samp_rate,\n                \"span_hz\"\
+      : self.samp_rate,\n                \"fft_size\": self.fft_size,\n          \
+      \      \"avg_alpha\": self.avg_alpha,\n                \"publish_interval\"\
+      : self.publish_interval,\n                \"data_type\": \"float32\",\n    \
+      \            \"scale\": \"linear_power\",\n                \"encoding\": \"\
+      base64\",\n                \"fft_power_linear\": fft_b64,\n            }\n\n\
+      \            json_dump = json.dumps(record)\n            self._publish(json_dump)\n\
+      \n            print(\n                f\"[FFT] Published averaged FFT vector:\
+      \ {self.fft_size} bins to {self.nats_subject}\",\n                flush=True,\n\
+      \            )\n\n        return len(input_items[0])\n        \n    def stop(self):\n\
+      \        print(\"[FFT] Stopping block and closing NATS connection...\", flush=True)\n\
+      \n        try:\n            if self.nc is not None:\n                self.nc.close()\n\
+      \        except Exception as e:\n            print(f\"[FFT] Error closing NATS:\
+      \ {e}\", flush=True)\n\n        self.nats_connected = False\n        return\
+      \ True\n"
+    affinity: ''
+    alias: ''
+    avg_alpha: '0.1'
+    center_freq: center_freq
+    comment: ''
+    fft_size: fft_size
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nats_server: '"nats://localhost:4222"'
+    nats_subject: '"sdr.fft"'
+    publish_interval: '1.0'
+    publish_nats: 'True'
+    samp_rate: samp_rate
+    source_name: '"b200mini"'
+  states:
+    _io_cache: ('Full FFT NATS Publisher', 'blk', [('center_freq', '209000000.0'),
+      ('samp_rate', '10000000.0'), ('fft_size', '2048'), ('nats_server', "'nats://localhost:4222'"),
+      ('nats_subject', "'sdr.fft'"), ('publish_nats', 'True'), ('source_name', "'b200mini'"),
+      ('avg_alpha', '0.1'), ('publish_interval', '1.0')], [('0', 'float', 2048)],
+      [], '', ['avg_alpha', 'center_freq', 'fft_size', 'nats_server', 'nats_subject',
+      'publish_interval', 'publish_nats', 'samp_rate', 'source_name'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1288, 444.0]
+    rotation: 0
+    state: enabled
+- name: fft_vxx_0
+  id: fft_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    fft_size: fft_size
+    forward: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nthreads: '1'
+    shift: 'True'
+    type: complex
+    window: window.blackmanharris(fft_size)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [728, 172.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_freq_sink_x_0
+  id: qtgui_freq_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '0.2'
+    axislabels: 'True'
+    bw: samp_rate
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: ''
+    ctrlpanel: 'False'
+    fc: center_freq
+    fftsize: '2048'
+    freqhalf: 'True'
+    grid: 'True'
+    gui_hint: ''
+    label: Relative Gain
+    label1: ''
+    label10: ''''''
+    label2: ''''''
+    label3: ''''''
+    label4: ''''''
+    label5: ''''''
+    label6: ''''''
+    label7: ''''''
+    label8: ''''''
+    label9: ''''''
+    legend: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '""'
+    nconnections: '1'
+    norm_window: 'False'
+    showports: 'False'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_tag: '""'
+    type: complex
+    units: dB
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    wintype: window.WIN_BLACKMAN_hARRIS
+    ymax: '10'
+    ymin: '-140'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [608, 420.0]
+    rotation: 0
+    state: enabled
+- name: uhd_usrp_source_0
+  id: uhd_usrp_source
+  parameters:
+    affinity: ''
+    alias: ''
+    ant0: '"RX2"'
+    ant1: '"RX2"'
+    ant10: '"RX2"'
+    ant11: '"RX2"'
+    ant12: '"RX2"'
+    ant13: '"RX2"'
+    ant14: '"RX2"'
+    ant15: '"RX2"'
+    ant16: '"RX2"'
+    ant17: '"RX2"'
+    ant18: '"RX2"'
+    ant19: '"RX2"'
+    ant2: '"RX2"'
+    ant20: '"RX2"'
+    ant21: '"RX2"'
+    ant22: '"RX2"'
+    ant23: '"RX2"'
+    ant24: '"RX2"'
+    ant25: '"RX2"'
+    ant26: '"RX2"'
+    ant27: '"RX2"'
+    ant28: '"RX2"'
+    ant29: '"RX2"'
+    ant3: '"RX2"'
+    ant30: '"RX2"'
+    ant31: '"RX2"'
+    ant4: '"RX2"'
+    ant5: '"RX2"'
+    ant6: '"RX2"'
+    ant7: '"RX2"'
+    ant8: '"RX2"'
+    ant9: '"RX2"'
+    bw0: '0'
+    bw1: '0'
+    bw10: '0'
+    bw11: '0'
+    bw12: '0'
+    bw13: '0'
+    bw14: '0'
+    bw15: '0'
+    bw16: '0'
+    bw17: '0'
+    bw18: '0'
+    bw19: '0'
+    bw2: '0'
+    bw20: '0'
+    bw21: '0'
+    bw22: '0'
+    bw23: '0'
+    bw24: '0'
+    bw25: '0'
+    bw26: '0'
+    bw27: '0'
+    bw28: '0'
+    bw29: '0'
+    bw3: '0'
+    bw30: '0'
+    bw31: '0'
+    bw4: '0'
+    bw5: '0'
+    bw6: '0'
+    bw7: '0'
+    bw8: '0'
+    bw9: '0'
+    center_freq0: center_freq
+    center_freq1: '0'
+    center_freq10: '0'
+    center_freq11: '0'
+    center_freq12: '0'
+    center_freq13: '0'
+    center_freq14: '0'
+    center_freq15: '0'
+    center_freq16: '0'
+    center_freq17: '0'
+    center_freq18: '0'
+    center_freq19: '0'
+    center_freq2: '0'
+    center_freq20: '0'
+    center_freq21: '0'
+    center_freq22: '0'
+    center_freq23: '0'
+    center_freq24: '0'
+    center_freq25: '0'
+    center_freq26: '0'
+    center_freq27: '0'
+    center_freq28: '0'
+    center_freq29: '0'
+    center_freq3: '0'
+    center_freq30: '0'
+    center_freq31: '0'
+    center_freq4: '0'
+    center_freq5: '0'
+    center_freq6: '0'
+    center_freq7: '0'
+    center_freq8: '0'
+    center_freq9: '0'
+    clock_rate: 0e0
+    clock_source0: ''
+    clock_source1: ''
+    clock_source2: ''
+    clock_source3: ''
+    clock_source4: ''
+    clock_source5: ''
+    clock_source6: ''
+    clock_source7: ''
+    comment: ''
+    dc_offs0: 0+0j
+    dc_offs1: 0+0j
+    dc_offs10: 0+0j
+    dc_offs11: 0+0j
+    dc_offs12: 0+0j
+    dc_offs13: 0+0j
+    dc_offs14: 0+0j
+    dc_offs15: 0+0j
+    dc_offs16: 0+0j
+    dc_offs17: 0+0j
+    dc_offs18: 0+0j
+    dc_offs19: 0+0j
+    dc_offs2: 0+0j
+    dc_offs20: 0+0j
+    dc_offs21: 0+0j
+    dc_offs22: 0+0j
+    dc_offs23: 0+0j
+    dc_offs24: 0+0j
+    dc_offs25: 0+0j
+    dc_offs26: 0+0j
+    dc_offs27: 0+0j
+    dc_offs28: 0+0j
+    dc_offs29: 0+0j
+    dc_offs3: 0+0j
+    dc_offs30: 0+0j
+    dc_offs31: 0+0j
+    dc_offs4: 0+0j
+    dc_offs5: 0+0j
+    dc_offs6: 0+0j
+    dc_offs7: 0+0j
+    dc_offs8: 0+0j
+    dc_offs9: 0+0j
+    dc_offs_enb0: default
+    dc_offs_enb1: default
+    dc_offs_enb10: default
+    dc_offs_enb11: default
+    dc_offs_enb12: default
+    dc_offs_enb13: default
+    dc_offs_enb14: default
+    dc_offs_enb15: default
+    dc_offs_enb16: default
+    dc_offs_enb17: default
+    dc_offs_enb18: default
+    dc_offs_enb19: default
+    dc_offs_enb2: default
+    dc_offs_enb20: default
+    dc_offs_enb21: default
+    dc_offs_enb22: default
+    dc_offs_enb23: default
+    dc_offs_enb24: default
+    dc_offs_enb25: default
+    dc_offs_enb26: default
+    dc_offs_enb27: default
+    dc_offs_enb28: default
+    dc_offs_enb29: default
+    dc_offs_enb3: default
+    dc_offs_enb30: default
+    dc_offs_enb31: default
+    dc_offs_enb4: default
+    dc_offs_enb5: default
+    dc_offs_enb6: default
+    dc_offs_enb7: default
+    dc_offs_enb8: default
+    dc_offs_enb9: default
+    dev_addr: '""'
+    dev_args: ''
+    gain0: '30'
+    gain1: '0'
+    gain10: '0'
+    gain11: '0'
+    gain12: '0'
+    gain13: '0'
+    gain14: '0'
+    gain15: '0'
+    gain16: '0'
+    gain17: '0'
+    gain18: '0'
+    gain19: '0'
+    gain2: '0'
+    gain20: '0'
+    gain21: '0'
+    gain22: '0'
+    gain23: '0'
+    gain24: '0'
+    gain25: '0'
+    gain26: '0'
+    gain27: '0'
+    gain28: '0'
+    gain29: '0'
+    gain3: '0'
+    gain30: '0'
+    gain31: '0'
+    gain4: '0'
+    gain5: '0'
+    gain6: '0'
+    gain7: '0'
+    gain8: '0'
+    gain9: '0'
+    gain_type0: default
+    gain_type1: default
+    gain_type10: default
+    gain_type11: default
+    gain_type12: default
+    gain_type13: default
+    gain_type14: default
+    gain_type15: default
+    gain_type16: default
+    gain_type17: default
+    gain_type18: default
+    gain_type19: default
+    gain_type2: default
+    gain_type20: default
+    gain_type21: default
+    gain_type22: default
+    gain_type23: default
+    gain_type24: default
+    gain_type25: default
+    gain_type26: default
+    gain_type27: default
+    gain_type28: default
+    gain_type29: default
+    gain_type3: default
+    gain_type30: default
+    gain_type31: default
+    gain_type4: default
+    gain_type5: default
+    gain_type6: default
+    gain_type7: default
+    gain_type8: default
+    gain_type9: default
+    iq_imbal0: 0+0j
+    iq_imbal1: 0+0j
+    iq_imbal10: 0+0j
+    iq_imbal11: 0+0j
+    iq_imbal12: 0+0j
+    iq_imbal13: 0+0j
+    iq_imbal14: 0+0j
+    iq_imbal15: 0+0j
+    iq_imbal16: 0+0j
+    iq_imbal17: 0+0j
+    iq_imbal18: 0+0j
+    iq_imbal19: 0+0j
+    iq_imbal2: 0+0j
+    iq_imbal20: 0+0j
+    iq_imbal21: 0+0j
+    iq_imbal22: 0+0j
+    iq_imbal23: 0+0j
+    iq_imbal24: 0+0j
+    iq_imbal25: 0+0j
+    iq_imbal26: 0+0j
+    iq_imbal27: 0+0j
+    iq_imbal28: 0+0j
+    iq_imbal29: 0+0j
+    iq_imbal3: 0+0j
+    iq_imbal30: 0+0j
+    iq_imbal31: 0+0j
+    iq_imbal4: 0+0j
+    iq_imbal5: 0+0j
+    iq_imbal6: 0+0j
+    iq_imbal7: 0+0j
+    iq_imbal8: 0+0j
+    iq_imbal9: 0+0j
+    iq_imbal_enb0: default
+    iq_imbal_enb1: default
+    iq_imbal_enb10: default
+    iq_imbal_enb11: default
+    iq_imbal_enb12: default
+    iq_imbal_enb13: default
+    iq_imbal_enb14: default
+    iq_imbal_enb15: default
+    iq_imbal_enb16: default
+    iq_imbal_enb17: default
+    iq_imbal_enb18: default
+    iq_imbal_enb19: default
+    iq_imbal_enb2: default
+    iq_imbal_enb20: default
+    iq_imbal_enb21: default
+    iq_imbal_enb22: default
+    iq_imbal_enb23: default
+    iq_imbal_enb24: default
+    iq_imbal_enb25: default
+    iq_imbal_enb26: default
+    iq_imbal_enb27: default
+    iq_imbal_enb28: default
+    iq_imbal_enb29: default
+    iq_imbal_enb3: default
+    iq_imbal_enb30: default
+    iq_imbal_enb31: default
+    iq_imbal_enb4: default
+    iq_imbal_enb5: default
+    iq_imbal_enb6: default
+    iq_imbal_enb7: default
+    iq_imbal_enb8: default
+    iq_imbal_enb9: default
+    lo_export0: 'False'
+    lo_export1: 'False'
+    lo_export10: 'False'
+    lo_export11: 'False'
+    lo_export12: 'False'
+    lo_export13: 'False'
+    lo_export14: 'False'
+    lo_export15: 'False'
+    lo_export16: 'False'
+    lo_export17: 'False'
+    lo_export18: 'False'
+    lo_export19: 'False'
+    lo_export2: 'False'
+    lo_export20: 'False'
+    lo_export21: 'False'
+    lo_export22: 'False'
+    lo_export23: 'False'
+    lo_export24: 'False'
+    lo_export25: 'False'
+    lo_export26: 'False'
+    lo_export27: 'False'
+    lo_export28: 'False'
+    lo_export29: 'False'
+    lo_export3: 'False'
+    lo_export30: 'False'
+    lo_export31: 'False'
+    lo_export4: 'False'
+    lo_export5: 'False'
+    lo_export6: 'False'
+    lo_export7: 'False'
+    lo_export8: 'False'
+    lo_export9: 'False'
+    lo_source0: internal
+    lo_source1: internal
+    lo_source10: internal
+    lo_source11: internal
+    lo_source12: internal
+    lo_source13: internal
+    lo_source14: internal
+    lo_source15: internal
+    lo_source16: internal
+    lo_source17: internal
+    lo_source18: internal
+    lo_source19: internal
+    lo_source2: internal
+    lo_source20: internal
+    lo_source21: internal
+    lo_source22: internal
+    lo_source23: internal
+    lo_source24: internal
+    lo_source25: internal
+    lo_source26: internal
+    lo_source27: internal
+    lo_source28: internal
+    lo_source29: internal
+    lo_source3: internal
+    lo_source30: internal
+    lo_source31: internal
+    lo_source4: internal
+    lo_source5: internal
+    lo_source6: internal
+    lo_source7: internal
+    lo_source8: internal
+    lo_source9: internal
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nchan: '1'
+    num_mboards: '1'
+    otw: ''
+    rx_agc0: Default
+    rx_agc1: Default
+    rx_agc10: Default
+    rx_agc11: Default
+    rx_agc12: Default
+    rx_agc13: Default
+    rx_agc14: Default
+    rx_agc15: Default
+    rx_agc16: Default
+    rx_agc17: Default
+    rx_agc18: Default
+    rx_agc19: Default
+    rx_agc2: Default
+    rx_agc20: Default
+    rx_agc21: Default
+    rx_agc22: Default
+    rx_agc23: Default
+    rx_agc24: Default
+    rx_agc25: Default
+    rx_agc26: Default
+    rx_agc27: Default
+    rx_agc28: Default
+    rx_agc29: Default
+    rx_agc3: Default
+    rx_agc30: Default
+    rx_agc31: Default
+    rx_agc4: Default
+    rx_agc5: Default
+    rx_agc6: Default
+    rx_agc7: Default
+    rx_agc8: Default
+    rx_agc9: Default
+    samp_rate: samp_rate
+    sd_spec0: ''
+    sd_spec1: ''
+    sd_spec2: ''
+    sd_spec3: ''
+    sd_spec4: ''
+    sd_spec5: ''
+    sd_spec6: ''
+    sd_spec7: ''
+    show_lo_controls: 'False'
+    start_time: '-1.0'
+    stream_args: ''
+    stream_chans: '[]'
+    sync: none
+    time_source0: ''
+    time_source1: ''
+    time_source2: ''
+    time_source3: ''
+    time_source4: ''
+    time_source5: ''
+    time_source6: ''
+    time_source7: ''
+    type: fc32
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [168, 180.0]
+    rotation: 0
+    state: enabled
+
+connections:
+- [blocks_complex_to_mag_squared_0, '0', epy_block_0, '0']
+- [blocks_complex_to_mag_squared_0, '0', epy_block_1, '0']
+- [blocks_stream_to_vector_0, '0', fft_vxx_0, '0']
+- [fft_vxx_0, '0', blocks_complex_to_mag_squared_0, '0']
+- [uhd_usrp_source_0, '0', blocks_stream_to_vector_0, '0']
+- [uhd_usrp_source_0, '0', qtgui_freq_sink_x_0, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.12.0
