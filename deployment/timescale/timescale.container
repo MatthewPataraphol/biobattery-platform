@@ -1,0 +1,14 @@
+[Unit]
+Description=OATS Biobattery TimescaleDB
+
+[Container]
+ContainerName=timescale
+Image=docker.io/timescale/timescaledb:latest-pg17
+
+Volume=timescale.volume:/var/lib/postgresql/data
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target default.target

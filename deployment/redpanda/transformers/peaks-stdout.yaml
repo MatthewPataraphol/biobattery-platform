@@ -1,0 +1,18 @@
+input:
+  nats_jetstream:
+    urls:
+      - nats://oats-nats:4222
+    stream: BIOBATTERY
+    subject: sdr.peaks
+    durable: PI_PEAKS_TRANSFORMER
+    deliver: new
+    ack_wait: 30s
+    max_ack_pending: 1024
+    max_reconnects: -1
+
+pipeline:
+  processors: []
+
+output:
+  stdout:
+    codec: lines
