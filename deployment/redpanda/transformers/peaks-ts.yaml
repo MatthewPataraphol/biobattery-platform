@@ -1,0 +1,65 @@
+input:
+  nats_jetstream:
+    urls:
+      - ${NATS_URL}
+    stream: ${NATS_STREAM}
+    subject: sdr.peaks
+    durable: PI_PEAKS_TIMESCALE
+    deliver: new
+    ack_wait: 30s
+    max_ack_pending: 1024
+    max_reconnects: -1
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this.without("peak_freq_mhz", "timestamp_local")
+
+output:
+  sql_raw:
+    driver: postgres
+    dsn: ${POSTGRES_DSN}
+    query: |
+      INSERT INTO sdr_peaks (
+        time,
+        source,
+        timestamp_unix,
+        center_freq_hz,
+        sample_rate_hz,
+        fft_size,
+        min_freq_hz,
+        max_freq_hz,
+        avg_alpha,
+        peak_freq_hz,
+        peak_power_db_relative,
+        noise_floor_db_relative,
+        snr_db,
+        snr_threshold_db,
+        detected,
+        raw_message
+      )
+      VALUES (
+        to_timestamp($1),
+        $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13, $14, $15,
+        $16::jsonb
+      )
+    args_mapping: |
+      root = [
+        this.timestamp_unix,
+        this.source,
+        this.timestamp_unix,
+        this.center_freq_hz,
+        this.sample_rate_hz,
+        this.fft_size,
+        this.min_freq_hz,
+        this.max_freq_hz,
+        this.avg_alpha,
+        this.peak_freq_hz,
+        this.peak_power_db_relative,
+        this.noise_floor_db_relative,
+        this.snr_db,
+        this.snr_threshold_db,
+        this.detected,
+        this.format_json()
+      ]

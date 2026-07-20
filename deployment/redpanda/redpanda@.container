@@ -4,18 +4,19 @@ Description=OATS Biobattery Redpanda Connect pipeline %i
 [Container]
 ContainerName=rpc_%i
 Image=docker.io/redpandadata/connect:latest
+Network=oats.network
 
-Exec=run /transformers/%i.yaml
-WorkingDir=/transformers
+Volume=./transformers/%i.yaml:/connect.yaml:ro
 
-Volume=./transformers:/transformers:ro
-
-Environment=NATS_URL=nats://host.containers.internal:4222
+Secret=rpc_tsdb_biobatt,type=env,target=POSTGRES_DSN
+Environment=NATS_URL=nats://oats-nats:4222
 Environment=NATS_STREAM=BIOBATTERY
+
+Exec=run
 
 [Service]
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target default.target
-DefaultInstance=peaks-jsonl
+DefaultInstance=peaks-ts
