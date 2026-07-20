@@ -2,8 +2,9 @@
 Description=OATS Biobattery NATS
 
 [Container]
-ContainerName=nats
+ContainerName=oats-nats
 Image=docker.io/library/nats:2.11.17
+Network=oats.network
 
 PublishPort=4222:4222
 PublishPort=7422:7422
