@@ -1,0 +1,20 @@
+[Unit]
+Description=OATS Biobattery TimescaleDB
+
+[Container]
+ContainerName=timescale
+Image=docker.io/timescale/timescaledb:latest-pg17
+Network=oats.network
+
+Volume=timescale.volume:/var/lib/postgresql/data
+Volume=./init:/docker-entrypoint-initdb.d:ro
+
+Environment=POSTGRES_DB=biobatt
+Environment=POSTGRES_USER=biobatt
+Secret=timescale_biobatt_password,type=env,target=POSTGRES_PASSWORD
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target default.target

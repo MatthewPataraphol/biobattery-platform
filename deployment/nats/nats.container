@@ -1,0 +1,22 @@
+[Unit]
+Description=OATS Biobattery NATS
+
+[Container]
+ContainerName=oats-nats
+Image=docker.io/library/nats:2.11.17
+Network=oats.network
+
+PublishPort=4222:4222
+PublishPort=7422:7422
+PublishPort=8222:8222
+
+Volume=./config/nats-server.conf:/nats-server.conf:ro
+Volume=nats-jetstream.volume:/data
+
+Exec=--config /nats-server.conf
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target default.target
