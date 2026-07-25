@@ -9,8 +9,11 @@ Network=oats.network
 Volume=./transformers/%i.yaml:/connect.yaml:ro
 
 Secret=rpc_tsdb_biobatt,type=env,target=POSTGRES_DSN
+Secret=biobattery_nats_creds,target=biobattery.creds
+
 Environment=NATS_URL=nats://oats-nats:4222
 Environment=NATS_STREAM=BIOBATTERY
+Environment=NATS_CREDS_FILE=/run/secrets/biobattery.creds
 
 Exec=run
 
