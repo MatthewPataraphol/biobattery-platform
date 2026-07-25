@@ -5,6 +5,9 @@
 *.pem
 credentials/
 secrets/
+!deployment/timescale/secrets/
+!deployment/timescale/secrets/.gitignore
+!deployment/timescale/secrets/README.txt
 
 # Local runtime data
 data/
