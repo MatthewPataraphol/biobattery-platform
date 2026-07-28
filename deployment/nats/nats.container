@@ -11,6 +11,7 @@ PublishPort=7422:7422
 PublishPort=8222:8222
 
 Volume=./config/nats-server.conf:/nats-server.conf:ro
+Volume=./creds/biobattery.creds:/token.creds:ro
 Volume=nats-jetstream.volume:/data
 
 Exec=--config /nats-server.conf
