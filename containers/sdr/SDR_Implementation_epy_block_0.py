@@ -178,7 +178,7 @@ class blk(gr.sync_block):
             detected = bool(snr_db >= self.snr_threshold_db)
 
             record = {
-                "source": seld.source_name,
+                "source": self.source_name,
                 "timestamp_unix": now,
                 "timestamp_local": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "center_freq_hz": self.center_freq,
