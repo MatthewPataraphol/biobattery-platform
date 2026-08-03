@@ -38,7 +38,7 @@ class blk(gr.sync_block):
         min_freq=205e6,
         max_freq=213e6,
         avg_alpha=0.1,
-        log_interval=0.5,
+        log_interval=0.01,
         snr_threshold_db=15,
         log_dir="/home/iot4ag/sdr/GNUradio_files/data",
         source_name="sdr:88a29ed9fb92",
@@ -65,7 +65,7 @@ class blk(gr.sync_block):
         self.source_name = str(source_name)
 
         self.publish_nats = bool(publish_nats)
-        self.nats_server = str(nats_server)
+        self.nats_server = os.getenv("NATS_URL", str(nats_server))
         self.nats_subject = str(nats_subject)
         self.nc = None
         self.nats_connected = False

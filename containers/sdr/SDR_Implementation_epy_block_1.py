@@ -13,7 +13,7 @@ This block:
     - publishes the averaged full FFT vector to NATS at a controlled interval
     - uses base64-encoded float32 data
 """
-
+import os
 import json
 import time
 import base64
@@ -37,7 +37,7 @@ class blk(gr.sync_block):
         publish_nats=True,
         source_name="sdr:88a29ed9fb92",
         avg_alpha=0.1,
-        publish_interval=1.0,
+        publish_interval=0.01,
     ):
         gr.sync_block.__init__(
             self,
@@ -49,7 +49,7 @@ class blk(gr.sync_block):
         self.center_freq = float(center_freq)
         self.samp_rate = float(samp_rate)
         self.fft_size = int(fft_size)
-        self.nats_server = str(nats_server)
+        self.nats_server = os.getenv("NATS_URL", str(nats_server))
         self.nats_subject = str(nats_subject)
         self.publish_nats = bool(publish_nats)
         self.source_name = str(source_name)

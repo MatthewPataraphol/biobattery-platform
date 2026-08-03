@@ -117,7 +117,7 @@ blocks:
       \ NATSClient\nexcept Exception:\n    NATSClient = None\n\n\nclass blk(gr.sync_block):\n\
       \    def __init__(\n        self,\n        center_freq=209e6,\n        samp_rate=10e6,\n\
       \        fft_size=2048,\n        min_freq=205e6,\n        max_freq=213e6,\n\
-      \        avg_alpha=0.1,\n        log_interval=0.5,\n        snr_threshold_db=15,\n\
+      \        avg_alpha=0.1,\n        log_interval=0.01,\n        snr_threshold_db=15,\n\
       \        log_dir=\"/home/iot4ag/sdr/GNUradio_files/data\",\n        source_name=\"\
       sdr:88a29ed9fb92\",\n        publish_nats=True,\n        nats_server=\"nats://localhost:4222\"\
       ,\n        nats_subject=\"sdr.peaks\",\n    ):\n        gr.sync_block.__init__(\n\
@@ -129,28 +129,28 @@ blocks:
       \ = float(avg_alpha)\n        self.log_interval = float(log_interval)\n    \
       \    self.snr_threshold_db = float(snr_threshold_db)\n        self.log_dir =\
       \ str(log_dir)\n        self.source_name = str(source_name)\n\n        self.publish_nats\
-      \ = bool(publish_nats)\n        self.nats_server = str(nats_server)\n      \
-      \  self.nats_subject = str(nats_subject)\n        self.nc = None\n        self.nats_connected\
-      \ = False\n\n        self.avg_power = None\n        self.last_log_time = 0.0\n\
-      \n        os.makedirs(self.log_dir, exist_ok=True)\n\n        date_str = time.strftime(\"\
-      %Y%m%d\")\n        self.log_path = os.path.join(\n            self.log_dir,\n\
-      \            f\"b200mini_peak_log_{date_str}.jsonl\"\n        )\n\n        #\
-      \ This assumes FFT block has Shift: Yes\n        self.freqs = np.linspace(\n\
-      \            self.center_freq - self.samp_rate / 2.0,\n            self.center_freq\
-      \ + self.samp_rate / 2.0,\n            self.fft_size,\n            endpoint=False,\n\
-      \        )\n\n        self.search_mask = (\n            (self.freqs >= self.min_freq)\n\
-      \            & (self.freqs <= self.max_freq)\n        )\n\n        if not np.any(self.search_mask):\n\
-      \            raise ValueError(\"Search range does not overlap FFT frequency\
-      \ range.\")\n\n        print(f\"[OATS] JSONL logging to: {self.log_path}\",\
-      \ flush=True)\n        print(\n            f\"[OATS] Search range: {self.min_freq/1e6:.3f}\
-      \ MHz to {self.max_freq/1e6:.3f} MHz\",\n            flush=True,\n        )\n\
-      \n        if self.publish_nats:\n            self._connect_nats()\n\n    def\
-      \ _connect_nats(self):\n        if NATSClient is None:\n            print(\"\
-      [OATS] pynats2 is not installed. NATS publishing disabled.\", flush=True)\n\
-      \            self.nats_connected = False\n            return\n\n        try:\n\
-      \            self.nc = NATSClient(self.nats_server, socket_timeout=2)\n    \
-      \        self.nc.connect()\n            self.nats_connected = True\n       \
-      \     print(\n                f\"[OATS] Connected to NATS: {self.nats_server},\
+      \ = bool(publish_nats)\n        self.nats_server = os.getenv(\"NATS_URL\", str(nats_server))\n\
+      \        self.nats_subject = str(nats_subject)\n        self.nc = None\n   \
+      \     self.nats_connected = False\n\n        self.avg_power = None\n       \
+      \ self.last_log_time = 0.0\n\n        os.makedirs(self.log_dir, exist_ok=True)\n\
+      \n        date_str = time.strftime(\"%Y%m%d\")\n        self.log_path = os.path.join(\n\
+      \            self.log_dir,\n            f\"b200mini_peak_log_{date_str}.jsonl\"\
+      \n        )\n\n        # This assumes FFT block has Shift: Yes\n        self.freqs\
+      \ = np.linspace(\n            self.center_freq - self.samp_rate / 2.0,\n   \
+      \         self.center_freq + self.samp_rate / 2.0,\n            self.fft_size,\n\
+      \            endpoint=False,\n        )\n\n        self.search_mask = (\n  \
+      \          (self.freqs >= self.min_freq)\n            & (self.freqs <= self.max_freq)\n\
+      \        )\n\n        if not np.any(self.search_mask):\n            raise ValueError(\"\
+      Search range does not overlap FFT frequency range.\")\n\n        print(f\"[OATS]\
+      \ JSONL logging to: {self.log_path}\", flush=True)\n        print(\n       \
+      \     f\"[OATS] Search range: {self.min_freq/1e6:.3f} MHz to {self.max_freq/1e6:.3f}\
+      \ MHz\",\n            flush=True,\n        )\n\n        if self.publish_nats:\n\
+      \            self._connect_nats()\n\n    def _connect_nats(self):\n        if\
+      \ NATSClient is None:\n            print(\"[OATS] pynats2 is not installed.\
+      \ NATS publishing disabled.\", flush=True)\n            self.nats_connected\
+      \ = False\n            return\n\n        try:\n            self.nc = NATSClient(self.nats_server,\
+      \ socket_timeout=2)\n            self.nc.connect()\n            self.nats_connected\
+      \ = True\n            print(\n                f\"[OATS] Connected to NATS: {self.nats_server},\
       \ subject: {self.nats_subject}\",\n                flush=True,\n           \
       \ )\n        except Exception as e:\n            self.nats_connected = False\n\
       \            print(f\"[OATS] Could not connect to NATS: {e}\", flush=True)\n\
@@ -209,7 +209,7 @@ blocks:
     comment: ''
     fft_size: fft_size
     log_dir: '"/home/iot4ag/sdr/GNUradio_files/data"'
-    log_interval: '0.5'
+    log_interval: '0.01'
     max_freq: 213e6
     maxoutbuf: '0'
     min_freq: 205e6
@@ -223,7 +223,7 @@ blocks:
   states:
     _io_cache: ('OATS Peak Detector NATS', 'blk', [('center_freq', '209000000.0'),
       ('samp_rate', '10000000.0'), ('fft_size', '2048'), ('min_freq', '205000000.0'),
-      ('max_freq', '213000000.0'), ('avg_alpha', '0.1'), ('log_interval', '0.5'),
+      ('max_freq', '213000000.0'), ('avg_alpha', '0.1'), ('log_interval', '0.01'),
       ('snr_threshold_db', '15'), ('log_dir', "'/home/iot4ag/sdr/GNUradio_files/data'"),
       ('source_name', "'sdr:88a29ed9fb92'"), ('publish_nats', 'True'), ('nats_server',
       "'nats://localhost:4222'"), ('nats_subject', "'sdr.peaks'")], [('0', 'float',
@@ -244,37 +244,38 @@ blocks:
       \ to Mag^2\n\nOutput:\n    None\n\nThis block:\n    - averages the full FFT\
       \ power spectrum internally\n    - publishes the averaged full FFT vector to\
       \ NATS at a controlled interval\n    - uses base64-encoded float32 data\n\"\"\
-      \"\n\nimport json\nimport time\nimport base64\nimport numpy as np\nfrom gnuradio\
-      \ import gr\n\ntry:\n    from pynats2 import NATSClient\nexcept Exception:\n\
-      \    NATSClient = None\n\n\nclass blk(gr.sync_block):\n    def __init__(\n \
-      \       self,\n        center_freq=209e6,\n        samp_rate=10e6,\n       \
-      \ fft_size=2048,\n        nats_server=\"nats://localhost:4222\",\n        nats_subject=\"\
-      sdr.fft\",\n        publish_nats=True,\n        source_name=\"sdr:88a29ed9fb92\"\
-      ,\n        avg_alpha=0.1,\n        publish_interval=1.0,\n    ):\n        gr.sync_block.__init__(\n\
-      \            self,\n            name=\"Full FFT NATS Publisher\",\n        \
-      \    in_sig=[(np.float32, int(fft_size))],\n            out_sig=None,\n    \
-      \    )\n\n        self.center_freq = float(center_freq)\n        self.samp_rate\
-      \ = float(samp_rate)\n        self.fft_size = int(fft_size)\n        self.nats_server\
-      \ = str(nats_server)\n        self.nats_subject = str(nats_subject)\n      \
-      \  self.publish_nats = bool(publish_nats)\n        self.source_name = str(source_name)\n\
-      \        self.avg_alpha = float(avg_alpha)\n        self.publish_interval =\
-      \ float(publish_interval)\n\n        self.avg_power = None\n        self.last_publish_time\
-      \ = 0.0\n\n        self.nc = None\n        self.nats_connected = False\n\n \
-      \       if self.publish_nats:\n            self._connect_nats()\n\n    def _connect_nats(self):\n\
-      \        if NATSClient is None:\n            print(\"[FFT] pynats2 not installed.\
-      \ NATS disabled.\", flush=True)\n            return\n\n        try:\n      \
-      \      self.nc = NATSClient(self.nats_server, socket_timeout=2)\n          \
-      \  self.nc.connect()\n            self.nats_connected = True\n            print(\n\
-      \                f\"[FFT] Connected to NATS: {self.nats_server}, subject: {self.nats_subject}\"\
-      ,\n                flush=True,\n            )\n        except Exception as e:\n\
-      \            self.nats_connected = False\n            print(f\"[FFT] Could not\
-      \ connect to NATS: {e}\", flush=True)\n\n    def _publish(self, payload):\n\
-      \        if not self.publish_nats:\n            return\n\n        if not self.nats_connected:\n\
-      \            self._connect_nats()\n\n        if not self.nats_connected:\n \
-      \           return\n\n        try:\n            self.nc.publish(subject=self.nats_subject,\
-      \ payload=payload)\n        except Exception as e:\n            self.nats_connected\
-      \ = False\n            print(f\"[FFT] NATS publish failed: {e}\", flush=True)\n\
-      \n    def work(self, input_items, output_items):\n        spectra = input_items[0]\n\
+      \"\nimport os\nimport json\nimport time\nimport base64\nimport numpy as np\n\
+      from gnuradio import gr\n\ntry:\n    from pynats2 import NATSClient\nexcept\
+      \ Exception:\n    NATSClient = None\n\n\nclass blk(gr.sync_block):\n    def\
+      \ __init__(\n        self,\n        center_freq=209e6,\n        samp_rate=10e6,\n\
+      \        fft_size=2048,\n        nats_server=\"nats://localhost:4222\",\n  \
+      \      nats_subject=\"sdr.fft\",\n        publish_nats=True,\n        source_name=\"\
+      sdr:88a29ed9fb92\",\n        avg_alpha=0.1,\n        publish_interval=0.01,\n\
+      \    ):\n        gr.sync_block.__init__(\n            self,\n            name=\"\
+      Full FFT NATS Publisher\",\n            in_sig=[(np.float32, int(fft_size))],\n\
+      \            out_sig=None,\n        )\n\n        self.center_freq = float(center_freq)\n\
+      \        self.samp_rate = float(samp_rate)\n        self.fft_size = int(fft_size)\n\
+      \        self.nats_server = os.getenv(\"NATS_URL\", str(nats_server))\n    \
+      \    self.nats_subject = str(nats_subject)\n        self.publish_nats = bool(publish_nats)\n\
+      \        self.source_name = str(source_name)\n        self.avg_alpha = float(avg_alpha)\n\
+      \        self.publish_interval = float(publish_interval)\n\n        self.avg_power\
+      \ = None\n        self.last_publish_time = 0.0\n\n        self.nc = None\n \
+      \       self.nats_connected = False\n\n        if self.publish_nats:\n     \
+      \       self._connect_nats()\n\n    def _connect_nats(self):\n        if NATSClient\
+      \ is None:\n            print(\"[FFT] pynats2 not installed. NATS disabled.\"\
+      , flush=True)\n            return\n\n        try:\n            self.nc = NATSClient(self.nats_server,\
+      \ socket_timeout=2)\n            self.nc.connect()\n            self.nats_connected\
+      \ = True\n            print(\n                f\"[FFT] Connected to NATS: {self.nats_server},\
+      \ subject: {self.nats_subject}\",\n                flush=True,\n           \
+      \ )\n        except Exception as e:\n            self.nats_connected = False\n\
+      \            print(f\"[FFT] Could not connect to NATS: {e}\", flush=True)\n\n\
+      \    def _publish(self, payload):\n        if not self.publish_nats:\n     \
+      \       return\n\n        if not self.nats_connected:\n            self._connect_nats()\n\
+      \n        if not self.nats_connected:\n            return\n\n        try:\n\
+      \            self.nc.publish(subject=self.nats_subject, payload=payload)\n \
+      \       except Exception as e:\n            self.nats_connected = False\n  \
+      \          print(f\"[FFT] NATS publish failed: {e}\", flush=True)\n\n    def\
+      \ work(self, input_items, output_items):\n        spectra = input_items[0]\n\
       \n        for spectrum in spectra:\n            spectrum = np.maximum(spectrum,\
       \ 1e-20).astype(np.float32)\n\n            # Internal exponential moving average\n\
       \            if self.avg_power is None:\n                self.avg_power = spectrum.copy()\n\
@@ -314,7 +315,7 @@ blocks:
     minoutbuf: '0'
     nats_server: '"nats://localhost:4222"'
     nats_subject: '"sdr.fft"'
-    publish_interval: '1.0'
+    publish_interval: '0.01'
     publish_nats: 'True'
     samp_rate: samp_rate
     source_name: '"sdr:88a29ed9fb92"'
@@ -322,7 +323,7 @@ blocks:
     _io_cache: ('Full FFT NATS Publisher', 'blk', [('center_freq', '209000000.0'),
       ('samp_rate', '10000000.0'), ('fft_size', '2048'), ('nats_server', "'nats://localhost:4222'"),
       ('nats_subject', "'sdr.fft'"), ('publish_nats', 'True'), ('source_name', "'sdr:88a29ed9fb92'"),
-      ('avg_alpha', '0.1'), ('publish_interval', '1.0')], [('0', 'float', 2048)],
+      ('avg_alpha', '0.1'), ('publish_interval', '0.01')], [('0', 'float', 2048)],
       [], '', ['avg_alpha', 'center_freq', 'fft_size', 'nats_server', 'nats_subject',
       'publish_interval', 'publish_nats', 'samp_rate', 'source_name'])
     bus_sink: false
