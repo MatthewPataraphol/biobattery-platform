@@ -37,7 +37,7 @@ class blk(gr.sync_block):
         publish_nats=True,
         source_name="sdr:88a29ed9fb92",
         avg_alpha=0.1,
-        publish_interval=0.01,
+        publish_interval=1.0,
     ):
         gr.sync_block.__init__(
             self,

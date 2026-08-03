@@ -16,7 +16,6 @@ from gnuradio.fft import window
 from gnuradio import gr
 from gnuradio.filter import firdes
 import sys
-import os
 import signal
 from PyQt5 import Qt
 from argparse import ArgumentParser
@@ -132,8 +131,8 @@ class SDR_Implementation(gr.top_block, Qt.QWidget):
         self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
         self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
         self.fft_vxx_0 = fft.fft_vcc(fft_size, True, window.blackmanharris(fft_size), True, 1)
-        self.epy_block_1 = epy_block_1.blk(center_freq=center_freq, samp_rate=samp_rate, fft_size=fft_size, nats_server=os.getenv("NATS_URL", "nats://localhost:4222"), nats_subject="sdr.fft", publish_nats=True, source_name="b200mini", avg_alpha=0.1, publish_interval=0.01)
-        self.epy_block_0 = epy_block_0.blk(center_freq=center_freq, samp_rate=samp_rate, fft_size=fft_size, min_freq=205e6, max_freq=213e6, avg_alpha=0.1, log_interval=0.01, snr_threshold_db=10, log_dir=os.getenv("OATS_DATA_DIR", "/home/iot4ag/sdr/GNUradio_files/data"), source_name='b200mini', publish_nats=True, nats_server=os.getenv("NATS_URL", "nats://localhost:4222"), nats_subject="sdr.peaks")
+        self.epy_block_1 = epy_block_1.blk(center_freq=center_freq, samp_rate=samp_rate, fft_size=fft_size, nats_server="nats://localhost:4222", nats_subject="sdr.fft", publish_nats=True, source_name="sdr:88a29ed9fb92", avg_alpha=0.1, publish_interval=1.0)
+        self.epy_block_0 = epy_block_0.blk(center_freq=center_freq, samp_rate=samp_rate, fft_size=fft_size, min_freq=205e6, max_freq=213e6, avg_alpha=0.1, log_interval=0.5, snr_threshold_db=15, log_dir="/home/iot4ag/sdr/GNUradio_files/data", source_name='sdr:88a29ed9fb92', publish_nats=True, nats_server="nats://localhost:4222", nats_subject="sdr.peaks")
         self.blocks_stream_to_vector_0 = blocks.stream_to_vector(gr.sizeof_gr_complex*1, fft_size)
         self.blocks_complex_to_mag_squared_0 = blocks.complex_to_mag_squared(fft_size)
 

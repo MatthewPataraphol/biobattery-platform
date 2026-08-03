@@ -117,9 +117,9 @@ blocks:
       \ NATSClient\nexcept Exception:\n    NATSClient = None\n\n\nclass blk(gr.sync_block):\n\
       \    def __init__(\n        self,\n        center_freq=209e6,\n        samp_rate=10e6,\n\
       \        fft_size=2048,\n        min_freq=205e6,\n        max_freq=213e6,\n\
-      \        avg_alpha=0.1,\n        log_interval=0.5,\n        snr_threshold_db=6.0,\n\
+      \        avg_alpha=0.1,\n        log_interval=0.5,\n        snr_threshold_db=15,\n\
       \        log_dir=\"/home/iot4ag/sdr/GNUradio_files/data\",\n        source_name=\"\
-      b200mini\",\n        publish_nats=True,\n        nats_server=\"nats://localhost:4222\"\
+      sdr:88a29ed9fb92\",\n        publish_nats=True,\n        nats_server=\"nats://localhost:4222\"\
       ,\n        nats_subject=\"sdr.peaks\",\n    ):\n        gr.sync_block.__init__(\n\
       \            self,\n            name=\"OATS Peak Detector NATS\",\n        \
       \    in_sig=[(np.float32, int(fft_size))],\n            out_sig=None,\n    \
@@ -219,17 +219,17 @@ blocks:
     publish_nats: 'True'
     samp_rate: samp_rate
     snr_threshold_db: '15'
-    source_name: '''b200mini'''
+    source_name: '''sdr:88a29ed9fb92'''
   states:
     _io_cache: ('OATS Peak Detector NATS', 'blk', [('center_freq', '209000000.0'),
       ('samp_rate', '10000000.0'), ('fft_size', '2048'), ('min_freq', '205000000.0'),
       ('max_freq', '213000000.0'), ('avg_alpha', '0.1'), ('log_interval', '0.5'),
-      ('snr_threshold_db', '6.0'), ('log_dir', "'/home/iot4ag/sdr/GNUradio_files/data'"),
-      ('source_name', "'b200mini'"), ('publish_nats', 'True'), ('nats_server', "'nats://localhost:4222'"),
-      ('nats_subject', "'sdr.peaks'")], [('0', 'float', 2048)], [], '', ['avg_alpha',
-      'center_freq', 'fft_size', 'log_dir', 'log_interval', 'max_freq', 'min_freq',
-      'nats_server', 'nats_subject', 'publish_nats', 'samp_rate', 'snr_threshold_db',
-      'source_name'])
+      ('snr_threshold_db', '15'), ('log_dir', "'/home/iot4ag/sdr/GNUradio_files/data'"),
+      ('source_name', "'sdr:88a29ed9fb92'"), ('publish_nats', 'True'), ('nats_server',
+      "'nats://localhost:4222'"), ('nats_subject', "'sdr.peaks'")], [('0', 'float',
+      2048)], [], '', ['avg_alpha', 'center_freq', 'fft_size', 'log_dir', 'log_interval',
+      'max_freq', 'min_freq', 'nats_server', 'nats_subject', 'publish_nats', 'samp_rate',
+      'snr_threshold_db', 'source_name'])
     bus_sink: false
     bus_source: false
     bus_structure: null
@@ -249,8 +249,8 @@ blocks:
       \    NATSClient = None\n\n\nclass blk(gr.sync_block):\n    def __init__(\n \
       \       self,\n        center_freq=209e6,\n        samp_rate=10e6,\n       \
       \ fft_size=2048,\n        nats_server=\"nats://localhost:4222\",\n        nats_subject=\"\
-      sdr.fft\",\n        publish_nats=True,\n        source_name=\"b200mini\",\n\
-      \        avg_alpha=0.1,\n        publish_interval=1.0,\n    ):\n        gr.sync_block.__init__(\n\
+      sdr.fft\",\n        publish_nats=True,\n        source_name=\"sdr:88a29ed9fb92\"\
+      ,\n        avg_alpha=0.1,\n        publish_interval=1.0,\n    ):\n        gr.sync_block.__init__(\n\
       \            self,\n            name=\"Full FFT NATS Publisher\",\n        \
       \    in_sig=[(np.float32, int(fft_size))],\n            out_sig=None,\n    \
       \    )\n\n        self.center_freq = float(center_freq)\n        self.samp_rate\
@@ -317,11 +317,11 @@ blocks:
     publish_interval: '1.0'
     publish_nats: 'True'
     samp_rate: samp_rate
-    source_name: '"b200mini"'
+    source_name: '"sdr:88a29ed9fb92"'
   states:
     _io_cache: ('Full FFT NATS Publisher', 'blk', [('center_freq', '209000000.0'),
       ('samp_rate', '10000000.0'), ('fft_size', '2048'), ('nats_server', "'nats://localhost:4222'"),
-      ('nats_subject', "'sdr.fft'"), ('publish_nats', 'True'), ('source_name', "'b200mini'"),
+      ('nats_subject', "'sdr.fft'"), ('publish_nats', 'True'), ('source_name', "'sdr:88a29ed9fb92'"),
       ('avg_alpha', '0.1'), ('publish_interval', '1.0')], [('0', 'float', 2048)],
       [], '', ['avg_alpha', 'center_freq', 'fft_size', 'nats_server', 'nats_subject',
       'publish_interval', 'publish_nats', 'samp_rate', 'source_name'])
