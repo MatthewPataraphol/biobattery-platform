@@ -41,7 +41,7 @@ class blk(gr.sync_block):
         log_interval=0.01,
         snr_threshold_db=10.0,
         log_dir="/home/iot4ag/sdr/GNUradio_files/data",
-        source_name="b200mini",
+        source_name="sdr:88a29ed9fb92",
         publish_nats=True,
         nats_server="nats://localhost:4222",
         nats_subject="sdr.peaks",
@@ -178,7 +178,7 @@ class blk(gr.sync_block):
             detected = bool(snr_db >= self.snr_threshold_db)
 
             record = {
-                "source": self.source_name,
+                "source": seld.source_name,
                 "timestamp_unix": now,
                 "timestamp_local": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "center_freq_hz": self.center_freq,

@@ -35,7 +35,7 @@ class blk(gr.sync_block):
         nats_server="nats://localhost:4222",
         nats_subject="sdr.fft",
         publish_nats=True,
-        source_name="b200mini",
+        source_name="sdr:88a29ed9fb92",
         avg_alpha=0.1,
         publish_interval=0.01,
     ):
