@@ -29,8 +29,8 @@ except Exception:
 class blk(gr.sync_block):
     def __init__(
         self,
-        center_freq=209e6,
-        samp_rate=10e6,
+        center_freq=200e6,
+        samp_rate=15e6,
         fft_size=2048,
         nats_server="nats://localhost:4222",
         nats_subject="sdr.fft",

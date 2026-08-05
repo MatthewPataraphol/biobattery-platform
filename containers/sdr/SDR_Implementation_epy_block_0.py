@@ -32,10 +32,10 @@ except Exception:
 class blk(gr.sync_block):
     def __init__(
         self,
-        center_freq=209e6,
-        samp_rate=10e6,
+        center_freq=207.5e6,
+        samp_rate=15e6,
         fft_size=2048,
-        min_freq=205e6,
+        min_freq=200e6,
         max_freq=213e6,
         avg_alpha=0.1,
         log_interval=0.01,
