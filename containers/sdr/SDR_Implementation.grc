@@ -247,7 +247,7 @@ blocks:
       \"\nimport os\nimport json\nimport time\nimport base64\nimport numpy as np\n\
       from gnuradio import gr\n\ntry:\n    from pynats2 import NATSClient\nexcept\
       \ Exception:\n    NATSClient = None\n\n\nclass blk(gr.sync_block):\n    def\
-      \ __init__(\n        self,\n        center_freq=200e6,\n        samp_rate=15e6,\n\
+      \ __init__(\n        self,\n        center_freq=207.5e6,\n        samp_rate=15e6,\n\
       \        fft_size=2048,\n        nats_server=\"nats://localhost:4222\",\n  \
       \      nats_subject=\"sdr.fft\",\n        publish_nats=True,\n        source_name=\"\
       sdr:88a29ed9fb92\",\n        avg_alpha=0.1,\n        publish_interval=0.01,\n\
@@ -320,7 +320,7 @@ blocks:
     samp_rate: samp_rate
     source_name: '"sdr:88a29ed9fb92"'
   states:
-    _io_cache: ('Full FFT NATS Publisher', 'blk', [('center_freq', '200000000.0'),
+    _io_cache: ('Full FFT NATS Publisher', 'blk', [('center_freq', '207500000.0'),
       ('samp_rate', '15000000.0'), ('fft_size', '2048'), ('nats_server', "'nats://localhost:4222'"),
       ('nats_subject', "'sdr.fft'"), ('publish_nats', 'True'), ('source_name', "'sdr:88a29ed9fb92'"),
       ('avg_alpha', '0.1'), ('publish_interval', '0.01')], [('0', 'float', 2048)],
