@@ -32,14 +32,14 @@ except Exception:
 class blk(gr.sync_block):
     def __init__(
         self,
-        center_freq=207.5e6,
-        samp_rate=15e6,
+        center_freq=207e6,
+        samp_rate=14e6,
         fft_size=2048,
         min_freq=200e6,
-        max_freq=213e6,
+        max_freq=214e6,
         avg_alpha=0.1,
         log_interval=0.01,
-        snr_threshold_db=15,
+        snr_threshold_db=10,
         log_dir="/home/iot4ag/sdr/GNUradio_files/data",
         source_name="sdr:88a29ed9fb92",
         publish_nats=True,
