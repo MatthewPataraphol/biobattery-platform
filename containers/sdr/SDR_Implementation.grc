@@ -33,11 +33,23 @@ options:
     state: enabled
 
 blocks:
+- name: avg_alpha
+  id: variable
+  parameters:
+    comment: ''
+    value: float(os.getenv("SDR_AVG_ALPHA", "0.1"))
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [896, 12.0]
+    rotation: 0
+    state: enabled
 - name: center_freq
   id: variable
   parameters:
     comment: ''
-    value: 207e6
+    value: float(os.getenv("SDR_CENTER_FREQ", "207e6"))
   states:
     bus_sink: false
     bus_source: false
@@ -49,7 +61,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '2048'
+    value: int(os.getenv("SDR_FFT_SIZE", "2048"))
   states:
     bus_sink: false
     bus_source: false
@@ -57,16 +69,64 @@ blocks:
     coordinate: [424, 12.0]
     rotation: 0
     state: enabled
+- name: max_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: float(os.getenv("SDR_MAX_FREQ", "214e6"))
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [656, 12.0]
+    rotation: 0
+    state: enabled
+- name: min_freq
+  id: variable
+  parameters:
+    comment: ''
+    value: float(os.getenv("SDR_MIN_FREQ", "200e6"))
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [544, 12.0]
+    rotation: 0
+    state: enabled
+- name: publish_interval
+  id: variable
+  parameters:
+    comment: ''
+    value: float(os.getenv("SDR_PUBLISH_INTERVAL", "0.01"))
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1040, 20.0]
+    rotation: 0
+    state: enabled
 - name: samp_rate
   id: variable
   parameters:
     comment: ''
-    value: 14e6
+    value: float(os.getenv("SDR_SAMPLE_RATE", "14e6"))
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
     coordinate: [200, 12.0]
+    rotation: 0
+    state: enabled
+- name: snr_threshold_db
+  id: variable
+  parameters:
+    comment: ''
+    value: float(os.getenv("SDR_SNR_THRESHOLD_DB", "10"))
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [768, 4.0]
     rotation: 0
     state: enabled
 - name: blocks_complex_to_mag_squared_0
@@ -204,21 +264,21 @@ blocks:
       \ True\n"
     affinity: ''
     alias: ''
-    avg_alpha: '0.1'
+    avg_alpha: avg_alpha
     center_freq: center_freq
     comment: ''
     fft_size: fft_size
     log_dir: '"/home/iot4ag/sdr/GNUradio_files/data"'
-    log_interval: '0.01'
-    max_freq: 214e6
+    log_interval: publish_interval
+    max_freq: max_freq
     maxoutbuf: '0'
-    min_freq: 200e6
+    min_freq: min_freq
     minoutbuf: '0'
     nats_server: '"nats://localhost:4222"'
     nats_subject: '"sdr.peaks"'
     publish_nats: 'True'
     samp_rate: samp_rate
-    snr_threshold_db: '10'
+    snr_threshold_db: snr_threshold_db
     source_name: '''sdr:88a29ed9fb92'''
   states:
     _io_cache: ('OATS Peak Detector NATS', 'blk', [('center_freq', '207000000.0'),
@@ -307,7 +367,7 @@ blocks:
       \ True\n"
     affinity: ''
     alias: ''
-    avg_alpha: '0.1'
+    avg_alpha: avg_alpha
     center_freq: center_freq
     comment: ''
     fft_size: fft_size
@@ -315,7 +375,7 @@ blocks:
     minoutbuf: '0'
     nats_server: '"nats://localhost:4222"'
     nats_subject: '"sdr.fft"'
-    publish_interval: '0.01'
+    publish_interval: publish_interval
     publish_nats: 'True'
     samp_rate: samp_rate
     source_name: '"sdr:88a29ed9fb92"'
@@ -351,6 +411,19 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [728, 172.0]
+    rotation: 0
+    state: enabled
+- name: import_0
+  id: import
+  parameters:
+    alias: ''
+    comment: ''
+    imports: import os
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 100.0]
     rotation: 0
     state: enabled
 - name: qtgui_freq_sink_x_0
